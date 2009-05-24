@@ -13,7 +13,7 @@ MAKECMD = ENV['MAKE_CMD'] || 'make'
 MAKEOPTS = ENV['MAKE_OPTS'] || ''
 
 desc "Test project"
-task :default => 'test'
+task :default => ['compile', 'test']
 
 file 'ext/Makefile' => 'ext/extconf.rb' do
   Dir.chdir('ext') do
@@ -23,6 +23,7 @@ end
 
 # Let make handle dependencies between c/o/so - we'll just run it.
 file BSDIFF_SO => (['ext/Makefile'] + Dir['ext/*.c'] + Dir['ext/*.h']) do
+  m = 0
   Dir.chdir('ext') do
     pid = system("#{MAKECMD} #{MAKEOPTS}")
     m = $?.exitstatus
