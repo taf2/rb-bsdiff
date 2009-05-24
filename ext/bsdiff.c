@@ -31,12 +31,13 @@ __FBSDID("$FreeBSD: src/usr.bin/bsdiff/bsdiff/bsdiff.c,v 1.1 2005/08/06 01:59:05
 #include <sys/types.h>
 
 #include <bzlib.h>
-#include <err.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include  <ruby.h>
 
 #define MIN(x,y) (((x)<(y)) ? (x) : (y))
 
@@ -221,10 +222,12 @@ int bsdiff_files(const char *oldfile, const char *newfile, const char *patchfile
 		((old=malloc(oldsize+1))==NULL) ||
 		(lseek(fd,0,SEEK_SET)!=0) ||
 		(read(fd,old,oldsize)!=oldsize) ||
-		(close(fd)==-1)) err(1,"%s",oldfile);
+		(close(fd)==-1)) {
+    rb_raise(rb_eRuntimeError, "%s",oldfile);
+  }
 
 	if(((I=malloc((oldsize+1)*sizeof(off_t)))==NULL) ||
-		((V=malloc((oldsize+1)*sizeof(off_t)))==NULL)) err(1,NULL);
+		((V=malloc((oldsize+1)*sizeof(off_t)))==NULL)) rb_raise(rb_eRuntimeError, "malloc error");
 
 	qsufsort(I,V,old,oldsize);
 
@@ -237,16 +240,16 @@ int bsdiff_files(const char *oldfile, const char *newfile, const char *patchfile
 		((new=malloc(newsize+1))==NULL) ||
 		(lseek(fd,0,SEEK_SET)!=0) ||
 		(read(fd,new,newsize)!=newsize) ||
-		(close(fd)==-1)) err(1,"%s",newfile);
+		(close(fd)==-1)) rb_raise(rb_eRuntimeError, "%s",newfile);
 
 	if(((db=malloc(newsize+1))==NULL) ||
-		((eb=malloc(newsize+1))==NULL)) err(1,NULL);
+		((eb=malloc(newsize+1))==NULL)) rb_raise(rb_eRuntimeError,"malloc error");
 	dblen=0;
 	eblen=0;
 
 	/* Create the patch file */
 	if ((pf = fopen(patchfile, "w")) == NULL)
-		err(1, "%s", patchfile);
+		rb_raise(rb_eRuntimeError, "%s", patchfile);
 
 	/* Header is
 		0	8	 "BSDIFF40"
@@ -263,11 +266,11 @@ int bsdiff_files(const char *oldfile, const char *newfile, const char *patchfile
 	offtout(0, header + 16);
 	offtout(newsize, header + 24);
 	if (fwrite(header, 32, 1, pf) != 1)
-		err(1, "fwrite(%s)", patchfile);
+		rb_raise(rb_eRuntimeError, "fwrite(%s)", patchfile);
 
 	/* Compute the differences, writing ctrl as we go */
 	if ((pfbz2 = BZ2_bzWriteOpen(&bz2err, pf, 9, 0, 0)) == NULL)
-		errx(1, "BZ2_bzWriteOpen, bz2err = %d", bz2err);
+		rb_raise(rb_eRuntimeError, "BZ2_bzWriteOpen, bz2err = %d", bz2err);
 	scan=0;len=0;
 	lastscan=0;lastpos=0;lastoffset=0;
 	while(scan<newsize) {
@@ -333,17 +336,17 @@ int bsdiff_files(const char *oldfile, const char *newfile, const char *patchfile
 			offtout(lenf,buf);
 			BZ2_bzWrite(&bz2err, pfbz2, buf, 8);
 			if (bz2err != BZ_OK)
-				errx(1, "BZ2_bzWrite, bz2err = %d", bz2err);
+				rb_raise(rb_eRuntimeError, "BZ2_bzWrite, bz2err = %d", bz2err);
 
 			offtout((scan-lenb)-(lastscan+lenf),buf);
 			BZ2_bzWrite(&bz2err, pfbz2, buf, 8);
 			if (bz2err != BZ_OK)
-				errx(1, "BZ2_bzWrite, bz2err = %d", bz2err);
+				rb_raise(rb_eRuntimeError, "BZ2_bzWrite, bz2err = %d", bz2err);
 
 			offtout((pos-lenb)-(lastpos+lenf),buf);
 			BZ2_bzWrite(&bz2err, pfbz2, buf, 8);
 			if (bz2err != BZ_OK)
-				errx(1, "BZ2_bzWrite, bz2err = %d", bz2err);
+				rb_raise(rb_eRuntimeError, "BZ2_bzWrite, bz2err = %d", bz2err);
 
 			lastscan=scan-lenb;
 			lastpos=pos-lenb;
@@ -352,45 +355,45 @@ int bsdiff_files(const char *oldfile, const char *newfile, const char *patchfile
 	};
 	BZ2_bzWriteClose(&bz2err, pfbz2, 0, NULL, NULL);
 	if (bz2err != BZ_OK)
-		errx(1, "BZ2_bzWriteClose, bz2err = %d", bz2err);
+		rb_raise(rb_eRuntimeError, "BZ2_bzWriteClose, bz2err = %d", bz2err);
 
 	/* Compute size of compressed ctrl data */
 	if ((len = ftello(pf)) == -1)
-		err(1, "ftello");
+		rb_raise(rb_eRuntimeError, "ftello");
 	offtout(len-32, header + 8);
 
 	/* Write compressed diff data */
 	if ((pfbz2 = BZ2_bzWriteOpen(&bz2err, pf, 9, 0, 0)) == NULL)
-		errx(1, "BZ2_bzWriteOpen, bz2err = %d", bz2err);
+		rb_raise(rb_eRuntimeError, "BZ2_bzWriteOpen, bz2err = %d", bz2err);
 	BZ2_bzWrite(&bz2err, pfbz2, db, dblen);
 	if (bz2err != BZ_OK)
-		errx(1, "BZ2_bzWrite, bz2err = %d", bz2err);
+		rb_raise(rb_eRuntimeError, "BZ2_bzWrite, bz2err = %d", bz2err);
 	BZ2_bzWriteClose(&bz2err, pfbz2, 0, NULL, NULL);
 	if (bz2err != BZ_OK)
-		errx(1, "BZ2_bzWriteClose, bz2err = %d", bz2err);
+		rb_raise(rb_eRuntimeError, "BZ2_bzWriteClose, bz2err = %d", bz2err);
 
 	/* Compute size of compressed diff data */
 	if ((newsize = ftello(pf)) == -1)
-		err(1, "ftello");
+		rb_raise(rb_eRuntimeError, "ftello");
 	offtout(newsize - len, header + 16);
 
 	/* Write compressed extra data */
 	if ((pfbz2 = BZ2_bzWriteOpen(&bz2err, pf, 9, 0, 0)) == NULL)
-		errx(1, "BZ2_bzWriteOpen, bz2err = %d", bz2err);
+		rb_raise(rb_eRuntimeError, "BZ2_bzWriteOpen, bz2err = %d", bz2err);
 	BZ2_bzWrite(&bz2err, pfbz2, eb, eblen);
 	if (bz2err != BZ_OK)
-		errx(1, "BZ2_bzWrite, bz2err = %d", bz2err);
+		rb_raise(rb_eRuntimeError, "BZ2_bzWrite, bz2err = %d", bz2err);
 	BZ2_bzWriteClose(&bz2err, pfbz2, 0, NULL, NULL);
 	if (bz2err != BZ_OK)
-		errx(1, "BZ2_bzWriteClose, bz2err = %d", bz2err);
+		rb_raise(rb_eRuntimeError, "BZ2_bzWriteClose, bz2err = %d", bz2err);
 
 	/* Seek to the beginning, write the header, and close the file */
 	if (fseeko(pf, 0, SEEK_SET))
-		err(1, "fseeko");
+		rb_raise(rb_eRuntimeError, "fseeko");
 	if (fwrite(header, 32, 1, pf) != 1)
-		err(1, "fwrite(%s)", patchfile);
+		rb_raise(rb_eRuntimeError, "fwrite(%s)", patchfile);
 	if (fclose(pf))
-		err(1, "fclose");
+		rb_raise(rb_eRuntimeError, "fclose");
 
 	/* Free the memory we used */
 	free(db);
