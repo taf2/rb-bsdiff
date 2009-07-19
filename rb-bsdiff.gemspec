@@ -9,9 +9,10 @@ Gem::Specification.new do |s|
   s.date = %q{2009-07-19}
   s.description = %q{Ruby bindings to bindary diff tools bsdiff and bspatch}
   s.email = %q{todd.fisher@gmail.com}
+  s.extensions = ["ext/extconf.rb"]
   s.files = ["README", "Rakefile", "rb-bsdiff.gemspec", "test.rb", "ext/b0",
              "ext/b1", "ext/bsdiff.c", "ext/bsdiff.h", "ext/bspatch.c",
-             "ext/bspatch.h", "ext/extconf.rb", "rb_bsdiff.c"]
+             "ext/bspatch.h", "ext/extconf.rb", "ext/rb_bsdiff.c"]
   s.has_rdoc = true
   s.homepage = %q{http://github.com/taf2/rb-bsdiff}
   s.rdoc_options = ["--inline-source", "--charset=UTF-8"]
